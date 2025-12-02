@@ -91,3 +91,15 @@ class DashboardSummary(BaseModel):
     expense: float
     balance: float
     top_categories: list[CategoryTotal]
+
+
+class Pagination(BaseModel):
+    page: int
+    page_size: int
+    total_items: int
+    total_pages: int
+
+
+class TransactionsPage(BaseModel):
+    items: list[TransactionOut]
+    pagination: Pagination
