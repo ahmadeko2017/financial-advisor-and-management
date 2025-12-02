@@ -213,6 +213,12 @@ paths:
         - in: query
           name: period
           schema: { type: string, example: "2024-04" }
+        - in: query
+          name: start_date
+          schema: { type: string, format: date-time }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date-time }
       responses:
         "200":
           description: OK
@@ -220,6 +226,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
 
 components:
   securitySchemes:
@@ -325,16 +333,22 @@ components:
       type: object
       properties:
         period: { type: string }
+        start_date: { type: string, format: date-time }
+        end_date: { type: string, format: date-time }
         income: { type: number }
         expense: { type: number }
         balance: { type: number }
         top_categories:
           type: array
           items:
-            type: object
-            properties:
-              category_id: { type: string }
-              total: { type: number }
+            $ref: "#/components/schemas/CategoryTotal"
+
+    CategoryTotal:
+      type: object
+      properties:
+        category_id: { type: string, nullable: true }
+        name: { type: string, nullable: true }
+        total: { type: number }
 
     Pagination:
       type: object

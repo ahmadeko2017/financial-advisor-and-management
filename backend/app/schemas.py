@@ -75,3 +75,19 @@ class TransactionCreate(TransactionBase):
 class TransactionOut(TransactionBase):
     id: str
     model_config = ConfigDict(from_attributes=True)
+
+
+class CategoryTotal(BaseModel):
+    category_id: Optional[str] = None
+    name: Optional[str] = None
+    total: float
+
+
+class DashboardSummary(BaseModel):
+    period: str
+    start_date: datetime
+    end_date: datetime
+    income: float
+    expense: float
+    balance: float
+    top_categories: list[CategoryTotal]

@@ -9,7 +9,7 @@ from sqlalchemy.exc import OperationalError
 
 from app import models
 from app.database import Base, engine
-from app.routers import accounts, auth, categories, transactions
+from app.routers import accounts, auth, categories, transactions, dashboard
 from app.security import get_password_hash
 
 
@@ -141,6 +141,7 @@ app.include_router(auth.router)
 app.include_router(accounts.router)
 app.include_router(categories.router)
 app.include_router(transactions.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/health")
