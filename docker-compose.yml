@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  api:
+    container_name: fintrack-api
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python scripts/wait_for_db.py &&
+      python -m alembic -c alembic.ini upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    env_file:
+      - backend/.env.example
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://finuser:finpass@fintrack-db:5432/fintrack
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  frontend:
+    container_name: fintrack-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    command: npm run dev -- --host --port 5173
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  db:
+    container_name: fintrack-db
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fintrack}
+      POSTGRES_USER: ${POSTGRES_USER:-finuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finpass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    container_name: fintrack-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  db_data:

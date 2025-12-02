@@ -1,0 +1,371 @@
+openapi: 3.0.3
+info:
+  title: Financial Tracker API (Draft)
+  version: "0.1.0"
+servers:
+  - url: https://api.example.com
+    description: Production (placeholder)
+  - url: http://localhost:8000
+    description: Local dev
+paths:
+  /auth/register:
+    post:
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /auth/login:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  refresh_token: { type: string }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users/me:
+    get:
+      summary: Get current user profile
+      security: [BearerAuth: []]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /accounts:
+    get:
+      summary: List accounts
+      security: [BearerAuth: []]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Account" }
+    post:
+      summary: Create account
+      security: [BearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountInput"
+      responses:
+        "201": { description: Created }
+
+  /accounts/{account_id}:
+    delete:
+      summary: Delete account
+      security: [BearerAuth: []]
+      parameters:
+        - in: path
+          name: account_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /categories:
+    get:
+      summary: List categories (global + user)
+      security: [BearerAuth: []]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Category" }
+    post:
+      summary: Create custom category
+      security: [BearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201": { description: Created }
+
+  /categories/{category_id}:
+    delete:
+      summary: Delete custom category
+      security: [BearerAuth: []]
+      parameters:
+        - in: path
+          name: category_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /transactions:
+    get:
+      summary: List transactions (filter by date/category/type)
+      security: [BearerAuth: []]
+      parameters:
+        - in: query
+          name: start_date
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date }
+        - in: query
+          name: category_id
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Transaction" }
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+    post:
+      summary: Create transaction
+      security: [BearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+      responses:
+        "201": { description: Created }
+
+  /imports:
+    post:
+      summary: Upload CSV/Excel for import
+      security: [BearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "202":
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJob"
+
+  /dashboard/summary:
+    get:
+      summary: Summary metrics per period
+      security: [BearerAuth: []]
+      parameters:
+        - in: query
+          name: period
+          schema: { type: string, example: "2024-04" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    UserCreate:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        name: { type: string }
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        name: { type: string }
+        role: { type: string, example: user }
+
+    Account:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [cash, bank, e-wallet] }
+        currency: { type: string, example: IDR }
+
+    AccountInput:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [cash, bank, e-wallet] }
+        currency: { type: string, example: IDR }
+
+    Category:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [income, expense, transfer] }
+
+    CategoryInput:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [income, expense, transfer] }
+        parent_id: { type: string, format: uuid, nullable: true }
+
+    Transaction:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        account_id: { type: string, format: uuid }
+        category_id: { type: string, format: uuid, nullable: true }
+        type: { type: string }
+        amount: { type: number, format: double }
+        currency: { type: string }
+        description: { type: string }
+        occurred_at: { type: string, format: date-time }
+        source: { type: string, enum: [manual, import, ocr] }
+        status: { type: string, enum: [predicted, confirmed] }
+        ai_confidence:
+          type: number
+          format: float
+          nullable: true
+
+    TransactionInput:
+      type: object
+      required: [account_id, type, amount, occurred_at]
+      properties:
+        account_id: { type: string }
+        category_id: { type: string, nullable: true }
+        type: { type: string, enum: [income, expense, transfer] }
+        amount: { type: number, format: double }
+        currency: { type: string, example: IDR }
+        description: { type: string }
+        occurred_at: { type: string, format: date-time }
+
+    ImportJob:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [pending, running, completed, failed] }
+        summary: { type: object, additionalProperties: true }
+
+    DashboardSummary:
+      type: object
+      properties:
+        period: { type: string }
+        income: { type: number }
+        expense: { type: number }
+        balance: { type: number }
+        top_categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category_id: { type: string }
+              total: { type: number }
+
+    Pagination:
+      type: object
+      properties:
+        page: { type: integer }
+        page_size: { type: integer }
+        total_items: { type: integer }
+        total_pages: { type: integer }
+
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+        code: { type: string }
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
