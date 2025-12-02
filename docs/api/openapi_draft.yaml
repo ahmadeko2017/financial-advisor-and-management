@@ -177,6 +177,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TransactionsPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     post:
       summary: Create transaction
       security: [BearerAuth: []]
@@ -363,6 +367,16 @@ components:
         page_size: { type: integer }
         total_items: { type: integer }
         total_pages: { type: integer }
+
+    TransactionsPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
 
     Error:
       type: object
