@@ -28,6 +28,12 @@ pipeline {
       }
     }
 
+    stage('Backend Lint') {
+      steps {
+        sh 'podman run --rm ${IMAGE_NAME}:${IMAGE_TAG} python -m compileall app'
+      }
+    }
+
     stage('Build Frontend') {
       steps {
         sh 'podman build -t ${FE_IMAGE_NAME}:${FE_IMAGE_TAG} -f frontend/Dockerfile frontend'
