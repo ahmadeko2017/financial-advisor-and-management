@@ -25,6 +25,7 @@ function App() {
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [accountForm, setAccountForm] = useState({ name: '', type: 'cash', currency: 'IDR' });
   const [categoryForm, setCategoryForm] = useState({ name: '', type: 'expense' });
   const [txForm, setTxForm] = useState({
@@ -60,14 +61,16 @@ function App() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [acc, cats, txs] = await Promise.all([
+        const [acc, cats, txs, sum] = await Promise.all([
           apiFetch('/accounts', { token }),
           apiFetch('/categories', { token }),
           apiFetch('/transactions', { token }),
+          apiFetch('/dashboard/summary', { token }),
         ]);
         setAccounts(acc);
         setCategories(cats);
-        setTransactions(txs);
+        setTransactions(txs.items || txs);
+        setSummary(sum);
         if (acc.length > 0) setTxForm((f) => ({ ...f, account_id: f.account_id || acc[0].id }));
         if (cats.length > 0) setTxForm((f) => ({ ...f, category_id: f.category_id || cats[0].id }));
       } catch (e) {
@@ -321,6 +324,54 @@ function App() {
 
         {/* Transactions */}
         <section className="grid gap-6 lg:grid-cols-3">
+          <div className="rounded-2xl border border-ink-100 bg-white/70 p-5 shadow-sm backdrop-blur">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-ink-900">Dashboard</h2>
+              <span className="text-xs font-semibold text-ink-500">{summary?.period || 'periode berjalan'}</span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-ink-100 bg-white px-3 py-3 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Income</p>
+                <p className="mt-1 text-lg font-bold text-lime-700">Rp{summary ? summary.income.toLocaleString('id-ID') : '0'}</p>
+              </div>
+              <div className="rounded-xl border border-ink-100 bg-white px-3 py-3 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Expense</p>
+                <p className="mt-1 text-lg font-bold text-red-600">Rp{summary ? summary.expense.toLocaleString('id-ID') : '0'}</p>
+              </div>
+              <div className="rounded-xl border border-ink-100 bg-white px-3 py-3 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Balance</p>
+                <p className="mt-1 text-lg font-bold text-ink-900">Rp{summary ? summary.balance.toLocaleString('id-ID') : '0'}</p>
+              </div>
+            </div>
+            <div className="mt-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Top Kategori (Expense)</p>
+              <div className="mt-2 flex flex-col gap-2">
+                {(summary?.top_categories || []).map((cat) => {
+                  const total = cat.total || 0;
+                  const max = (summary?.top_categories?.[0]?.total || 1) || 1;
+                  const percent = Math.min(100, Math.round((total / max) * 100));
+                  return (
+                    <div key={cat.category_id || cat.name} className="flex flex-col gap-1">
+                      <div className="flex justify-between text-xs text-ink-700">
+                        <span>{cat.name || 'Uncategorized'}</span>
+                        <span>Rp{total.toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-ink-100">
+                        <div
+                          className="h-2 rounded-full bg-lime-500 transition-all"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {summary && summary.top_categories?.length === 0 && (
+                  <p className="text-xs text-ink-500">Belum ada data kategori.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="lg:col-span-2 rounded-2xl border border-ink-100 bg-white/70 p-5 shadow-sm backdrop-blur">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-ink-900">Transaksi</h2>
