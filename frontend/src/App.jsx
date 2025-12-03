@@ -45,6 +45,12 @@ function App() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState({ show: false, message: '', tone: 'error' });
+
+  const showToast = (message, tone = 'error', timeout = 4000) => {
+    setToast({ show: true, message, tone });
+    setTimeout(() => setToast({ show: false, message: '', tone: 'error' }), timeout);
+  };
 
   const isAuthed = useMemo(() => Boolean(token), [token]);
   const currentPeriod = useMemo(() => {
@@ -103,6 +109,7 @@ function App() {
         if (cats.length > 0) setTxForm((f) => ({ ...f, category_id: f.category_id || cats[0].id }));
       } catch (e) {
         setError(e.message);
+        showToast(e.message);
       } finally {
         setLoading(false);
       }
@@ -118,6 +125,7 @@ function App() {
       setSummary(sum);
     } catch (e) {
       setError(e.message);
+      showToast(e.message);
     } finally {
       setSummaryLoading(false);
     }
@@ -130,6 +138,7 @@ function App() {
       await handleLogin();
     } catch (e) {
       setError(e.message);
+      showToast(e.message);
     }
   };
 
@@ -140,6 +149,7 @@ function App() {
       setToken(data.access_token);
     } catch (e) {
       setError(e.message);
+      showToast(e.message);
     }
   };
 
@@ -152,6 +162,7 @@ function App() {
       setAccountForm({ name: '', type: 'cash', currency: 'IDR' });
     } catch (e) {
       setError(e.message);
+      showToast(e.message);
     }
   };
 
@@ -163,6 +174,7 @@ function App() {
       setCategories((prev) => [...prev, cat]);
     } catch (e) {
       setError(e.message);
+      showToast(e.message);
     }
   };
 
@@ -174,6 +186,7 @@ function App() {
       setTransactions((prev) => [tx, ...prev]);
     } catch (e) {
       setError(e.message);
+      showToast(e.message);
     }
   };
 
@@ -201,6 +214,15 @@ function App() {
         </header>
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {toast.show && (
+          <div
+            className={`fixed right-4 top-4 z-50 max-w-sm rounded-lg px-4 py-3 text-sm shadow-lg ${
+              toast.tone === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-lime-100 text-lime-800 border border-lime-200'
+            }`}
+          >
+            {toast.message}
+          </div>
+        )}
 
         {/* Auth block */}
         <section className="grid gap-6 lg:grid-cols-3">
