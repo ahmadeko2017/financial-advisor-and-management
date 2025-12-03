@@ -26,6 +26,7 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [accountForm, setAccountForm] = useState({ name: '', type: 'cash', currency: 'IDR' });
   const [categoryForm, setCategoryForm] = useState({ name: '', type: 'expense' });
   const [txForm, setTxForm] = useState({
@@ -43,6 +44,11 @@ function App() {
   const [error, setError] = useState('');
 
   const isAuthed = useMemo(() => Boolean(token), [token]);
+  const currentPeriod = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+  const [period, setPeriod] = useState(currentPeriod);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -65,7 +71,7 @@ function App() {
           apiFetch('/accounts', { token }),
           apiFetch('/categories', { token }),
           apiFetch('/transactions', { token }),
-          apiFetch('/dashboard/summary', { token }),
+          apiFetch(`/dashboard/summary?period=${period}`, { token }),
         ]);
         setAccounts(acc);
         setCategories(cats);
@@ -80,7 +86,20 @@ function App() {
       }
     };
     loadData();
-  }, [isAuthed, token]);
+  }, [isAuthed, token, period]);
+
+  const refreshSummary = async (p = period) => {
+    if (!isAuthed) return;
+    setSummaryLoading(true);
+    try {
+      const sum = await apiFetch(`/dashboard/summary?period=${p}`, { token });
+      setSummary(sum);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   const handleRegister = async () => {
     setError('');
@@ -327,20 +346,44 @@ function App() {
           <div className="rounded-2xl border border-ink-100 bg-white/70 p-5 shadow-sm backdrop-blur">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-ink-900">Dashboard</h2>
-              <span className="text-xs font-semibold text-ink-500">{summary?.period || 'periode berjalan'}</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="month"
+                  value={period}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPeriod(val);
+                    refreshSummary(val);
+                  }}
+                  className="rounded-lg border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => refreshSummary(period)}
+                  className="rounded-lg border border-ink-100 bg-white px-2 py-1 text-xs font-semibold text-ink-700 transition hover:border-lime-500 hover:text-lime-600"
+                >
+                  Refresh
+                </button>
+              </div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-ink-100 bg-white px-3 py-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Income</p>
-                <p className="mt-1 text-lg font-bold text-lime-700">Rp{summary ? summary.income.toLocaleString('id-ID') : '0'}</p>
+                <p className="mt-1 text-lg font-bold text-lime-700">
+                  Rp{summary ? summary.income.toLocaleString('id-ID') : summaryLoading ? '...' : '0'}
+                </p>
               </div>
               <div className="rounded-xl border border-ink-100 bg-white px-3 py-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Expense</p>
-                <p className="mt-1 text-lg font-bold text-red-600">Rp{summary ? summary.expense.toLocaleString('id-ID') : '0'}</p>
+                <p className="mt-1 text-lg font-bold text-red-600">
+                  Rp{summary ? summary.expense.toLocaleString('id-ID') : summaryLoading ? '...' : '0'}
+                </p>
               </div>
               <div className="rounded-xl border border-ink-100 bg-white px-3 py-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Balance</p>
-                <p className="mt-1 text-lg font-bold text-ink-900">Rp{summary ? summary.balance.toLocaleString('id-ID') : '0'}</p>
+                <p className="mt-1 text-lg font-bold text-ink-900">
+                  Rp{summary ? summary.balance.toLocaleString('id-ID') : summaryLoading ? '...' : '0'}
+                </p>
               </div>
             </div>
             <div className="mt-5">
