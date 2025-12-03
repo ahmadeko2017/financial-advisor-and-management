@@ -59,17 +59,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
     )
-    op.create_index("ix_transactions_user_occurred_at", "transactions", ["user_id", "occurred_at"])
-    op.create_index(
-        "ix_transactions_user_category_occurred_at",
-        "transactions",
-        ["user_id", "category_id", "occurred_at"],
-    )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_transactions_user_category_occurred_at", table_name="transactions")
-    op.drop_index("ix_transactions_user_occurred_at", table_name="transactions")
     op.drop_table("transactions")
     op.drop_table("categories")
     op.drop_table("accounts")

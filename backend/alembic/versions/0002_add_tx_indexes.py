@@ -10,14 +10,22 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_index("ix_transactions_user_occurred_at", "transactions", ["user_id", "occurred_at"])
+    op.create_index(
+        "ix_transactions_user_occurred_at",
+        "transactions",
+        ["user_id", "occurred_at"],
+        unique=False,
+        if_not_exists=True,
+    )
     op.create_index(
         "ix_transactions_user_category_occurred_at",
         "transactions",
         ["user_id", "category_id", "occurred_at"],
+        unique=False,
+        if_not_exists=True,
     )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_transactions_user_category_occurred_at", table_name="transactions")
-    op.drop_index("ix_transactions_user_occurred_at", table_name="transactions")
+    op.execute('DROP INDEX IF EXISTS "ix_transactions_user_category_occurred_at";')
+    op.execute('DROP INDEX IF EXISTS "ix_transactions_user_occurred_at";')
