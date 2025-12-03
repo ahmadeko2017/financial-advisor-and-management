@@ -6,7 +6,8 @@ const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 async function apiFetch(path, { token, method = 'GET', body } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${apiBase}${path}`, {
+  const url = path.startsWith('http') ? path : `${apiBase}${path}`;
+  const res = await fetch(url, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
@@ -27,6 +28,8 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [txMeta, setTxMeta] = useState({ page: 1, page_size: 10, total_pages: 1, total_items: 0 });
+  const [txFilters, setTxFilters] = useState({ q: '', type: '', category_id: '', start_date: '', end_date: '' });
   const [accountForm, setAccountForm] = useState({ name: '', type: 'cash', currency: 'IDR' });
   const [categoryForm, setCategoryForm] = useState({ name: '', type: 'expense' });
   const [txForm, setTxForm] = useState({
@@ -50,6 +53,24 @@ function App() {
   }, []);
   const [period, setPeriod] = useState(currentPeriod);
 
+  const buildTxParams = (page = 1, overrides = {}) => {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('page_size', String(txMeta.page_size || 10));
+    Object.entries({ ...txFilters, ...overrides }).forEach(([k, v]) => {
+      if (v) params.set(k, v);
+    });
+    return params.toString();
+  };
+
+  const loadTransactions = async (page = 1, overrides = {}) => {
+    if (!isAuthed) return;
+    const query = buildTxParams(page, overrides);
+    const data = await apiFetch(`/transactions?${query}`, { token });
+    setTransactions(data.items || data);
+    if (data.pagination) setTxMeta(data.pagination);
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     fetch(`${apiBase}/health`, { signal: controller.signal })
@@ -70,12 +91,13 @@ function App() {
         const [acc, cats, txs, sum] = await Promise.all([
           apiFetch('/accounts', { token }),
           apiFetch('/categories', { token }),
-          apiFetch('/transactions', { token }),
+          apiFetch(`/transactions?${buildTxParams(1)}`, { token }),
           apiFetch(`/dashboard/summary?period=${period}`, { token }),
         ]);
         setAccounts(acc);
         setCategories(cats);
         setTransactions(txs.items || txs);
+        if (txs.pagination) setTxMeta(txs.pagination);
         setSummary(sum);
         if (acc.length > 0) setTxForm((f) => ({ ...f, account_id: f.account_id || acc[0].id }));
         if (cats.length > 0) setTxForm((f) => ({ ...f, category_id: f.category_id || cats[0].id }));
@@ -420,10 +442,65 @@ function App() {
               <h2 className="text-lg font-semibold text-ink-900">Transaksi</h2>
               <span className="text-xs font-semibold text-ink-500">Manual Input</span>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2 text-xs text-ink-600">
-              <span className="rounded-full bg-ink-100 px-2.5 py-1 font-semibold">Filter tanggal & kategori</span>
-              <span className="rounded-full bg-ink-100 px-2.5 py-1 font-semibold">Status predicted/confirmed</span>
-              <span className="rounded-full bg-ink-100 px-2.5 py-1 font-semibold">Pagination server-side</span>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-700">
+              <input
+                className="rounded-lg border border-ink-100 bg-white px-3 py-1.5 text-sm outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/30"
+                placeholder="Cari deskripsi"
+                value={txFilters.q}
+                onChange={(e) => setTxFilters((f) => ({ ...f, q: e.target.value }))}
+              />
+              <select
+                className="rounded-lg border border-ink-100 bg-white px-3 py-1.5 text-sm"
+                value={txFilters.type}
+                onChange={(e) => setTxFilters((f) => ({ ...f, type: e.target.value }))}
+              >
+                <option value="">Semua tipe</option>
+                <option value="income">income</option>
+                <option value="expense">expense</option>
+                <option value="transfer">transfer</option>
+              </select>
+              <select
+                className="rounded-lg border border-ink-100 bg-white px-3 py-1.5 text-sm"
+                value={txFilters.category_id}
+                onChange={(e) => setTxFilters((f) => ({ ...f, category_id: e.target.value }))}
+              >
+                <option value="">Semua kategori</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                className="rounded-lg border border-ink-100 bg-white px-3 py-1.5 text-sm"
+                value={txFilters.start_date}
+                onChange={(e) => setTxFilters((f) => ({ ...f, start_date: e.target.value }))}
+              />
+              <input
+                type="date"
+                className="rounded-lg border border-ink-100 bg-white px-3 py-1.5 text-sm"
+                value={txFilters.end_date}
+                onChange={(e) => setTxFilters((f) => ({ ...f, end_date: e.target.value }))}
+              />
+              <button
+                type="button"
+                onClick={() => loadTransactions(1)}
+                className="rounded-lg border border-ink-100 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 transition hover:border-lime-500 hover:text-lime-600"
+              >
+                Apply
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const reset = { q: '', type: '', category_id: '', start_date: '', end_date: '' };
+                  setTxFilters(reset);
+                  loadTransactions(1, reset);
+                }}
+                className="rounded-lg border border-ink-100 bg-white px-3 py-1.5 text-xs font-semibold text-ink-700 transition hover:border-lime-500 hover:text-lime-600"
+              >
+                Reset
+              </button>
             </div>
             <div className="mt-3 overflow-hidden rounded-xl border border-ink-100">
               <table className="min-w-full divide-y divide-ink-100 text-sm">
@@ -466,6 +543,29 @@ function App() {
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs text-ink-700">
+              <div>
+                Page {txMeta.page} / {txMeta.total_pages || 1} (Total {txMeta.total_items || transactions.length} transaksi)
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={txMeta.page <= 1}
+                  onClick={() => loadTransactions(txMeta.page - 1)}
+                  className="rounded-lg border border-ink-100 bg-white px-2 py-1 font-semibold transition hover:border-lime-500 hover:text-lime-600 disabled:opacity-50"
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  disabled={txMeta.page >= (txMeta.total_pages || 1)}
+                  onClick={() => loadTransactions(txMeta.page + 1)}
+                  className="rounded-lg border border-ink-100 bg-white px-2 py-1 font-semibold transition hover:border-lime-500 hover:text-lime-600 disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
 
