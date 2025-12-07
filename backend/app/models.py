@@ -72,7 +72,16 @@ class Category(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="categories")
-    transactions = relationship("Transaction", back_populates="category")
+    transactions = relationship(
+        "Transaction",
+        back_populates="category",
+        foreign_keys="Transaction.category_id",
+    )
+    predicted_transactions = relationship(
+        "Transaction",
+        back_populates="predicted_category",
+        foreign_keys="Transaction.predicted_category_id",
+    )
 
 
 class Transaction(Base):
@@ -96,4 +105,13 @@ class Transaction(Base):
 
     user = relationship("User", back_populates="transactions")
     account = relationship("Account", back_populates="transactions")
-    category = relationship("Category", back_populates="transactions")
+    category = relationship(
+        "Category",
+        back_populates="transactions",
+        foreign_keys=[category_id],
+    )
+    predicted_category = relationship(
+        "Category",
+        back_populates="predicted_transactions",
+        foreign_keys=[predicted_category_id],
+    )
