@@ -7,6 +7,7 @@ pipeline {
     FE_IMAGE_NAME = "fintrack-fe"
     FE_IMAGE_TAG = "dev"
     COMPOSE_PROJECT_NAME = "fintrack"
+    RUN_PY_CODE_STYLE = "false"
   }
 
   stages {
@@ -31,6 +32,24 @@ pipeline {
     stage('Backend Lint') {
       steps {
         sh 'podman run --rm ${IMAGE_NAME}:${IMAGE_TAG} python -m compileall app'
+      }
+    }
+
+    stage('Backend Ruff/Black (optional)') {
+      when {
+        expression { env.RUN_PY_CODE_STYLE == 'true' }
+      }
+      steps {
+        sh '''
+          podman run --rm ${IMAGE_NAME}:${IMAGE_TAG} sh -c '
+            if command -v ruff >/dev/null 2>&1 && command -v black >/dev/null 2>&1; then
+              ruff check .
+              black --check .
+            else
+              echo "ruff/black not installed in image, skipping"
+            fi
+          '
+        '''
       }
     }
 

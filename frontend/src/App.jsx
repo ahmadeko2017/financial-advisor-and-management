@@ -28,8 +28,20 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [txMeta, setTxMeta] = useState({ page: 1, page_size: 10, total_pages: 1, total_items: 0 });
-  const [txFilters, setTxFilters] = useState({ q: '', type: '', category_id: '', start_date: '', end_date: '' });
+  const [txMeta, setTxMeta] = useState({ page: 1, page_size: 20, total_pages: 0, total_items: 0, warnings: null });
+  const today = useMemo(() => new Date(), []);
+  const firstDay = useMemo(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d;
+  }, []);
+  const [txFilters, setTxFilters] = useState({
+    q: '',
+    type: '',
+    category_id: '',
+    start_date: firstDay.toISOString().slice(0, 10),
+    end_date: today.toISOString().slice(0, 10),
+  });
   const [accountForm, setAccountForm] = useState({ name: '', type: 'cash', currency: 'IDR' });
   const [categoryForm, setCategoryForm] = useState({ name: '', type: 'expense' });
   const [txForm, setTxForm] = useState({
@@ -53,11 +65,10 @@ function App() {
   };
 
   const isAuthed = useMemo(() => Boolean(token), [token]);
-  const currentPeriod = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }, []);
-  const [period, setPeriod] = useState(currentPeriod);
+  const [dateRange, setDateRange] = useState({
+    start: firstDay.toISOString().slice(0, 10),
+    end: today.toISOString().slice(0, 10),
+  });
 
   const buildTxParams = (page = 1, overrides = {}) => {
     const params = new URLSearchParams();
@@ -98,7 +109,7 @@ function App() {
           apiFetch('/accounts', { token }),
           apiFetch('/categories', { token }),
           apiFetch(`/transactions?${buildTxParams(1)}`, { token }),
-          apiFetch(`/dashboard/summary?period=${period}`, { token }),
+          apiFetch(`/dashboard/summary?start_date=${dateRange.start}&end_date=${dateRange.end}`, { token }),
         ]);
         setAccounts(acc);
         setCategories(cats);
@@ -115,13 +126,16 @@ function App() {
       }
     };
     loadData();
-  }, [isAuthed, token, period]);
+  }, [isAuthed, token, dateRange.start, dateRange.end]);
 
-  const refreshSummary = async (p = period) => {
+  const refreshSummary = async (range = dateRange) => {
     if (!isAuthed) return;
     setSummaryLoading(true);
     try {
-      const sum = await apiFetch(`/dashboard/summary?period=${p}`, { token });
+      const sum = await apiFetch(
+        `/dashboard/summary?start_date=${range.start}&end_date=${range.end}`,
+        { token }
+      );
       setSummary(sum);
     } catch (e) {
       setError(e.message);
@@ -392,18 +406,20 @@ function App() {
               <h2 className="text-lg font-semibold text-ink-900">Dashboard</h2>
               <div className="flex items-center gap-2">
                 <input
-                  type="month"
-                  value={period}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setPeriod(val);
-                    refreshSummary(val);
-                  }}
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange((r) => ({ ...r, start: e.target.value }))}
+                  className="rounded-lg border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/30"
+                />
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange((r) => ({ ...r, end: e.target.value }))}
                   className="rounded-lg border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/30"
                 />
                 <button
                   type="button"
-                  onClick={() => refreshSummary(period)}
+                  onClick={() => refreshSummary(dateRange)}
                   className="rounded-lg border border-ink-100 bg-white px-2 py-1 text-xs font-semibold text-ink-700 transition hover:border-lime-500 hover:text-lime-600"
                 >
                   Refresh
@@ -414,19 +430,34 @@ function App() {
               <div className="rounded-xl border border-ink-100 bg-white px-3 py-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Income</p>
                 <p className="mt-1 text-lg font-bold text-lime-700">
-                  Rp{summary ? summary.income.toLocaleString('id-ID') : summaryLoading ? '...' : '0'}
+                  Rp
+                  {summary
+                    ? Number(summary?.totals?.income || 0).toLocaleString('id-ID')
+                    : summaryLoading
+                      ? '...'
+                      : '0'}
                 </p>
               </div>
               <div className="rounded-xl border border-ink-100 bg-white px-3 py-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Expense</p>
                 <p className="mt-1 text-lg font-bold text-red-600">
-                  Rp{summary ? summary.expense.toLocaleString('id-ID') : summaryLoading ? '...' : '0'}
+                  Rp
+                  {summary
+                    ? Number(summary?.totals?.expense || 0).toLocaleString('id-ID')
+                    : summaryLoading
+                      ? '...'
+                      : '0'}
                 </p>
               </div>
               <div className="rounded-xl border border-ink-100 bg-white px-3 py-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Balance</p>
                 <p className="mt-1 text-lg font-bold text-ink-900">
-                  Rp{summary ? summary.balance.toLocaleString('id-ID') : summaryLoading ? '...' : '0'}
+                  Rp
+                  {summary
+                    ? Number(summary?.totals?.balance || 0).toLocaleString('id-ID')
+                    : summaryLoading
+                      ? '...'
+                      : '0'}
                 </p>
               </div>
             </div>
@@ -434,8 +465,8 @@ function App() {
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Top Kategori (Expense)</p>
               <div className="mt-2 flex flex-col gap-2">
                 {(summary?.top_categories || []).map((cat) => {
-                  const total = cat.total || 0;
-                  const max = (summary?.top_categories?.[0]?.total || 1) || 1;
+                  const total = Number(cat.amount || 0);
+                  const max = Number(summary?.top_categories?.[0]?.amount || 1) || 1;
                   const percent = Math.min(100, Math.round((total / max) * 100));
                   return (
                     <div key={cat.category_id || cat.name} className="flex flex-col gap-1">
@@ -515,7 +546,13 @@ function App() {
               <button
                 type="button"
                 onClick={() => {
-                  const reset = { q: '', type: '', category_id: '', start_date: '', end_date: '' };
+                  const reset = {
+                    q: '',
+                    type: '',
+                    category_id: '',
+                    start_date: firstDay.toISOString().slice(0, 10),
+                    end_date: today.toISOString().slice(0, 10),
+                  };
                   setTxFilters(reset);
                   loadTransactions(1, reset);
                 }}
