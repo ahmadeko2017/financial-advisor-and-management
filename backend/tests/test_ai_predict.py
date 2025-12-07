@@ -42,8 +42,12 @@ async def test_transaction_auto_predict(monkeypatch):
         res = await client.post("/accounts", json={"name": "Cash", "type": "cash", "currency": "IDR"}, headers=headers)
         account_id = res.json()["id"]
 
+        # Create category to satisfy FK when auto-assigning prediction
+        res = await client.post("/categories", json={"name": "AI Food", "type": "expense"}, headers=headers)
+        category_id = res.json()["id"]
+
         # Patch predict to return deterministic result
-        dummy_result = PredictionResult(category_id="dummy-cat", confidence=0.9, top_k=[("dummy-cat", 0.9)], model_version="vtest")
+        dummy_result = PredictionResult(category_id=category_id, confidence=0.9, top_k=[(category_id, 0.9)], model_version="vtest")
 
         def fake_load_model():
             return object()
