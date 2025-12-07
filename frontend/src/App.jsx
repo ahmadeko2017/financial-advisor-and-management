@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import './index.css';
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -56,6 +57,7 @@ function App() {
     source: 'manual',
   });
   const [loading, setLoading] = useState(false);
+  const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ show: false, message: '', tone: 'error' });
 
@@ -82,10 +84,18 @@ function App() {
 
   const loadTransactions = async (page = 1, overrides = {}) => {
     if (!isAuthed) return;
+    setTxLoading(true);
     const query = buildTxParams(page, overrides);
-    const data = await apiFetch(`/transactions?${query}`, { token });
-    setTransactions(data.items || data);
-    if (data.pagination) setTxMeta(data.pagination);
+    try {
+      const data = await apiFetch(`/transactions?${query}`, { token });
+      setTransactions(data.items || data);
+      if (data.pagination) setTxMeta(data.pagination);
+    } catch (e) {
+      setError(e.message);
+      showToast(e.message);
+    } finally {
+      setTxLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -203,6 +213,15 @@ function App() {
       showToast(e.message);
     }
   };
+
+  const topCategoryData = useMemo(
+    () =>
+      (summary?.top_categories || []).map((cat) => ({
+        name: cat.name || 'Uncategorized',
+        amount: Number(cat.amount || 0),
+      })),
+    [summary]
+  );
 
   return (
     <div className="min-h-screen bg-transparent text-ink-900">
@@ -463,30 +482,27 @@ function App() {
             </div>
             <div className="mt-5">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-500">Top Kategori (Expense)</p>
-              <div className="mt-2 flex flex-col gap-2">
-                {(summary?.top_categories || []).map((cat) => {
-                  const total = Number(cat.amount || 0);
-                  const max = Number(summary?.top_categories?.[0]?.amount || 1) || 1;
-                  const percent = Math.min(100, Math.round((total / max) * 100));
-                  return (
-                    <div key={cat.category_id || cat.name} className="flex flex-col gap-1">
-                      <div className="flex justify-between text-xs text-ink-700">
-                        <span>{cat.name || 'Uncategorized'}</span>
-                        <span>Rp{total.toLocaleString('id-ID')}</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-ink-100">
-                        <div
-                          className="h-2 rounded-full bg-lime-500 transition-all"
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-                {summary && summary.top_categories?.length === 0 && (
-                  <p className="text-xs text-ink-500">Belum ada data kategori.</p>
-                )}
-              </div>
+              {summaryLoading ? (
+                <p className="mt-2 text-xs text-ink-500">Memuat chart...</p>
+              ) : (topCategoryData || []).length > 0 ? (
+                <div className="mt-2 h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topCategoryData} margin={{ top: 8, right: 8, left: -16, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip
+                        formatter={(value) => [`Rp${Number(value).toLocaleString('id-ID')}`, 'Total']}
+                        labelClassName="text-xs text-ink-700"
+                        contentStyle={{ fontSize: '12px' }}
+                      />
+                      <Bar dataKey="amount" fill="#84cc16" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-ink-500">Belum ada data kategori.</p>
+              )}
             </div>
           </div>
 
@@ -562,69 +578,80 @@ function App() {
               </button>
             </div>
             <div className="mt-3 overflow-hidden rounded-xl border border-ink-100">
-              <table className="min-w-full divide-y divide-ink-100 text-sm">
-                <thead className="bg-ink-100/50 text-ink-700">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-semibold">Deskripsi</th>
-                    <th className="px-3 py-2 text-left font-semibold">Tipe</th>
-                    <th className="px-3 py-2 text-left font-semibold">Jumlah</th>
-                    <th className="px-3 py-2 text-left font-semibold">Tanggal</th>
-                    <th className="px-3 py-2 text-left font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-100 bg-white">
-                  {transactions.map((tx) => (
-                    <tr key={tx.id}>
-                      <td className="px-3 py-2 font-semibold text-ink-900">{tx.description || '-'}</td>
-                      <td className="px-3 py-2 text-ink-700">{tx.type}</td>
-                      <td className="px-3 py-2 text-ink-900">
-                        {tx.type === 'expense' ? '-' : '+'}
-                        {tx.amount}
-                      </td>
-                      <td className="px-3 py-2 text-ink-700">{tx.occurred_at?.slice(0, 10)}</td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            tx.status === 'confirmed' ? 'bg-lime-500/20 text-lime-700' : 'bg-ink-100 text-ink-700'
-                          }`}
-                        >
-                          {tx.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {transactions.length === 0 && (
+              {txLoading ? (
+                <div className="p-4 text-xs text-ink-500">Memuat transaksi...</div>
+              ) : (
+                <table className="min-w-full divide-y divide-ink-100 text-sm">
+                  <thead className="bg-ink-100/50 text-ink-700">
                     <tr>
-                      <td colSpan={5} className="px-3 py-2 text-center text-xs text-ink-500">
-                        Belum ada transaksi.
-                      </td>
+                      <th className="px-3 py-2 text-left font-semibold">Deskripsi</th>
+                      <th className="px-3 py-2 text-left font-semibold">Tipe</th>
+                      <th className="px-3 py-2 text-left font-semibold">Jumlah</th>
+                      <th className="px-3 py-2 text-left font-semibold">Tanggal</th>
+                      <th className="px-3 py-2 text-left font-semibold">Status</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-ink-100 bg-white">
+                    {transactions.map((tx) => (
+                      <tr key={tx.id}>
+                        <td className="px-3 py-2 font-semibold text-ink-900">{tx.description || '-'}</td>
+                        <td className="px-3 py-2 text-ink-700">{tx.type}</td>
+                        <td className="px-3 py-2 text-ink-900">
+                          {tx.type === 'expense' ? '-' : '+'}
+                          {tx.amount}
+                        </td>
+                        <td className="px-3 py-2 text-ink-700">{tx.occurred_at?.slice(0, 10)}</td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              tx.status === 'confirmed' ? 'bg-lime-500/20 text-lime-700' : 'bg-ink-100 text-ink-700'
+                            }`}
+                          >
+                            {tx.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {transactions.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-2 text-center text-xs text-ink-500">
+                          Belum ada transaksi.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-ink-700">
-              <div>
-                Page {txMeta.page} / {txMeta.total_pages || 1} (Total {txMeta.total_items || transactions.length} transaksi)
+            <div className="mt-3 flex flex-col gap-2 text-xs text-ink-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  Page {txMeta.page} / {txMeta.total_pages || 1} (Total {txMeta.total_items || transactions.length} transaksi)
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={txMeta.page <= 1}
+                    onClick={() => loadTransactions(txMeta.page - 1)}
+                    className="rounded-lg border border-ink-100 bg-white px-2 py-1 font-semibold transition hover:border-lime-500 hover:text-lime-600 disabled:opacity-50"
+                  >
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    disabled={txMeta.page >= (txMeta.total_pages || 1)}
+                    onClick={() => loadTransactions(txMeta.page + 1)}
+                    className="rounded-lg border border-ink-100 bg-white px-2 py-1 font-semibold transition hover:border-lime-500 hover:text-lime-600 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={txMeta.page <= 1}
-                  onClick={() => loadTransactions(txMeta.page - 1)}
-                  className="rounded-lg border border-ink-100 bg-white px-2 py-1 font-semibold transition hover:border-lime-500 hover:text-lime-600 disabled:opacity-50"
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  disabled={txMeta.page >= (txMeta.total_pages || 1)}
-                  onClick={() => loadTransactions(txMeta.page + 1)}
-                  className="rounded-lg border border-ink-100 bg-white px-2 py-1 font-semibold transition hover:border-lime-500 hover:text-lime-600 disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
+              {txMeta.warnings && txMeta.warnings.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                  {txMeta.warnings.join(', ')}
+                </div>
+              )}
             </div>
           </div>
 
