@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import './index.css';
 
@@ -72,7 +72,7 @@ function App() {
     end: today.toISOString().slice(0, 10),
   });
 
-  const buildTxParams = (page = 1, overrides = {}) => {
+  const buildTxParams = useCallback((page = 1, overrides = {}) => {
     const params = new URLSearchParams();
     params.set('page', String(page));
     params.set('page_size', String(txMeta.page_size || 10));
@@ -80,7 +80,7 @@ function App() {
       if (v) params.set(k, v);
     });
     return params.toString();
-  };
+  }, [txMeta.page_size, txFilters]);
 
   const loadTransactions = async (page = 1, overrides = {}) => {
     if (!isAuthed) return;
@@ -136,7 +136,7 @@ function App() {
       }
     };
     loadData();
-  }, [isAuthed, token, dateRange.start, dateRange.end]);
+  }, [isAuthed, token, dateRange.start, dateRange.end, buildTxParams]);
 
   const refreshSummary = async (range = dateRange) => {
     if (!isAuthed) return;

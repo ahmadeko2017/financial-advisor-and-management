@@ -1,21 +1,21 @@
 # MVP 2 Verification Checklist (backend + frontend)
 
 ## Backend pipeline (local equivalent of Jenkins stages)
-- [ ] `cd backend && pip install -r requirements-dev.txt`
-- [ ] `cd backend && python -m pytest`
-- [ ] `cd backend && python -m compileall app`
+- [ ] `cd backend && pip install -r requirements-dev.txt` _(pending; not run in this environment)_
+- [ ] `cd backend && python -m pytest` _(pending; pytest not run here)_
+- [ ] `cd backend && python -m compileall app` _(pending)_
 - [ ] (optional) `cd backend && RUN_PY_CODE_STYLE=true podman run ...` or run locally if `ruff`/`black` installed:
-  - `ruff check .`
-  - `black --check .`
+  - `ruff check .` _(pending)_
+  - `black --check .` _(pending)_
 
 ## Frontend pipeline
-- [ ] `cd frontend && npm ci`
-- [ ] `cd frontend && npm run lint`
-- [ ] `cd frontend && npm run build`
+- [ ] `cd frontend && npm ci` _(pending; lockfile updated, install needed on target)_
+- [ ] `cd frontend && npm run lint` _(pending)_
+- [ ] `cd frontend && npm run build` _(pending)_
 
 ## Smoke via Compose
-- [ ] `docker compose down -v` (optional reset)
-- [ ] `docker compose up --build`
+- [ ] `docker compose down -v` (optional reset) _(pending)_
+- [ ] `docker compose up --build` _(pending; run to verify after compose fix)_
 - Confirm:
   - API reachable: `curl http://localhost:8000/health`
   - Frontend reachable: `http://localhost:5173`
@@ -24,4 +24,4 @@
 ## Performance / EXPLAIN
 - [ ] Populate sample data (e.g., demo@example.com) then run:
   - `cd backend && DATABASE_URL=... python scripts/benchmark_summary.py <user_id> [start_date] [end_date]`
-- [ ] Capture EXPLAIN output and p95 latency notes in PR/issue.
+- [ ] Capture EXPLAIN output and p95 latency notes in PR/issue. _(pending; not executed yet)_
