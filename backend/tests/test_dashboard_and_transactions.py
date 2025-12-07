@@ -2,14 +2,15 @@ from datetime import datetime, date
 from decimal import Decimal
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
+from httpx import Client, ASGITransport
 
 from app.main import app, seed_default_categories
 from app.database import Base, engine
 from app.routers import dashboard
 from app import models
 
-client = TestClient(app)
+transport = ASGITransport(app=app)
+client = Client(transport=transport, base_url="http://testserver")
 
 
 def setup_module():

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi.testclient import TestClient
+from httpx import Client, ASGITransport
 
 from app.main import app, seed_default_categories
 from app.database import Base, SessionLocal, engine
@@ -17,7 +17,8 @@ def teardown_module():
     Base.metadata.drop_all(bind=engine)
 
 
-client = TestClient(app)
+transport = ASGITransport(app=app)
+client = Client(transport=transport, base_url="http://testserver")
 
 
 def test_register_login_and_crud_accounts_transactions():
