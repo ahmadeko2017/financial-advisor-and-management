@@ -411,6 +411,7 @@ components:
       properties:
         message: { type: string }
         code: { type: string }
+        trace_id: { type: string, nullable: true, description: "Trace identifier for debugging" }
 
   responses:
     BadRequest:

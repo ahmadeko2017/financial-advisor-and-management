@@ -1,10 +1,12 @@
 import os
 import time
+import logging
 from decimal import Decimal
+from uuid import uuid4
 
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -132,6 +134,7 @@ def seed_demo_data():
 init_db_with_retry()
 
 app = FastAPI(title="Financial Tracker API", version="0.1.0")
+logger = logging.getLogger(__name__)
 
 app.add_middleware(
     CORSMiddleware,
@@ -166,22 +169,35 @@ def format_error(status_code: int, message: str, code: str | None = None, trace_
     return JSONResponse(status_code=status_code, content=payload)
 
 
+@app.middleware("http")
+async def add_trace_id(request: Request, call_next):
+    trace_id = request.headers.get("X-Request-ID") or str(uuid4())
+    request.state.trace_id = trace_id
+    response = await call_next(request)
+    response.headers["X-Trace-Id"] = trace_id
+    return response
+
+
 @app.exception_handler(HTTPException)
-def http_exception_handler(_, exc: HTTPException):
+def http_exception_handler(request: Request, exc: HTTPException):
     detail = exc.detail if isinstance(exc.detail, str) else "An error occurred"
-    return format_error(exc.status_code, detail)
+    trace_id = getattr(request.state, "trace_id", None)
+    return format_error(exc.status_code, detail, trace_id=trace_id)
 
 
 @app.exception_handler(RequestValidationError)
-def validation_exception_handler(_, exc: RequestValidationError):
+def validation_exception_handler(request: Request, exc: RequestValidationError):
     # Pick first error message for brevity; could be expanded if needed.
     msg = exc.errors()[0].get("msg", "Invalid request")
-    return format_error(422, msg, code="VALIDATION_ERROR")
+    trace_id = getattr(request.state, "trace_id", None)
+    return format_error(422, msg, code="VALIDATION_ERROR", trace_id=trace_id)
 
 
 @app.exception_handler(Exception)
-def unhandled_exception_handler(_, exc: Exception):
-    return format_error(500, "Internal server error", code="INTERNAL_ERROR")
+def unhandled_exception_handler(request: Request, exc: Exception):
+    trace_id = getattr(request.state, "trace_id", None)
+    logger.exception("Unhandled error", extra={"trace_id": trace_id})
+    return format_error(500, "Internal server error", code="INTERNAL_ERROR", trace_id=trace_id)
 
 
 @app.get("/health")
