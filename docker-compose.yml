@@ -15,10 +15,13 @@ services:
     env_file:
       - backend/.env.example
     environment:
-      - DATABASE_URL=postgresql+psycopg2://finuser:finpass@fintrack-db:5432/fintrack
+      # Override to use service name `db` on internal network
+      - DATABASE_URL=postgresql+psycopg2://finuser:finpass@db:5432/fintrack
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     restart: unless-stopped
 
   frontend:
@@ -46,6 +49,11 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   redis:
