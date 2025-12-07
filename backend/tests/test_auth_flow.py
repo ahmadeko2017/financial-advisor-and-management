@@ -14,10 +14,6 @@ def setup_module():
     seed_default_categories()
 
 
-def teardown_module():
-    Base.metadata.drop_all(bind=engine)
-
-
 @pytest.mark.anyio
 async def test_register_login_and_crud_accounts_transactions():
     transport = ASGITransport(app=app)

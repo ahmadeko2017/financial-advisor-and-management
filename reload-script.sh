@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 
 # Stop existing stack
-podman compose down -v
+podman compose down
+# podman compose down -v
 
 # Build images
 podman compose build

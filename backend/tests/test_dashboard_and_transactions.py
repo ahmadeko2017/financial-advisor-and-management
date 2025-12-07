@@ -24,10 +24,6 @@ def setup_module():
     dashboard._summary_cache.clear()  # type: ignore[attr-defined]
 
 
-def teardown_module():
-    Base.metadata.drop_all(bind=engine)
-
-
 async def _auth_headers(client: AsyncClient, email: str | None = None) -> dict[str, str]:
     email = email or f"user_{uuid4().hex}@example.com"
     payload = {"email": email, "password": "secret123"}

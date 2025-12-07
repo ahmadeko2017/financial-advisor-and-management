@@ -14,10 +14,6 @@ def setup_module():
     seed_default_categories()
 
 
-def teardown_module():
-    Base.metadata.drop_all(bind=engine)
-
-
 async def _auth_headers(client: AsyncClient, email: str | None = None) -> dict[str, str]:
     email = email or f"neg_{uuid4().hex}@example.com"
     payload = {"email": email, "password": "secret123"}
