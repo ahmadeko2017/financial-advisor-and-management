@@ -34,15 +34,15 @@ pipeline {
       }
     }
 
-    stage('Frontend Lint') {
-      steps {
-        sh 'podman run --rm ${FE_IMAGE_NAME}:${FE_IMAGE_TAG} npm run lint || true'
-      }
-    }
-
     stage('Build Frontend') {
       steps {
         sh 'podman build -t ${FE_IMAGE_NAME}:${FE_IMAGE_TAG} -f frontend/Dockerfile frontend'
+      }
+    }
+
+    stage('Frontend Lint') {
+      steps {
+        sh 'podman run --rm ${FE_IMAGE_NAME}:${FE_IMAGE_TAG} npm run lint'
       }
     }
 
