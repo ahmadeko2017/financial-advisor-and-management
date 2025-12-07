@@ -1,17 +1,17 @@
 # MVP 2 Verification Checklist (backend + frontend)
 
 ## Backend pipeline (local equivalent of Jenkins stages)
-- [ ] `cd backend && pip install -r requirements-dev.txt` _(pending; not run in this environment)_
-- [ ] `cd backend && python -m pytest` _(pending; pytest not run here)_
+- [ ] `cd backend && pip install -r requirements-dev.txt` _(blocked: psycopg2 build needs pg_config/libpq; not available in current env)_
+- [ ] `cd backend && python -m pytest` _(pending; awaits deps install)_
 - [ ] `cd backend && python -m compileall app` _(pending)_
 - [ ] (optional) `cd backend && RUN_PY_CODE_STYLE=true podman run ...` or run locally if `ruff`/`black` installed:
   - `ruff check .` _(pending)_
   - `black --check .` _(pending)_
 
 ## Frontend pipeline
-- [ ] `cd frontend && npm ci` _(pending; lockfile updated, install needed on target)_
-- [ ] `cd frontend && npm run lint` _(pending)_
-- [ ] `cd frontend && npm run build` _(pending)_
+- [ ] `cd frontend && npm ci` _(pending on target; install succeeded locally with npm install)_
+- [x] `cd frontend && npm run lint`
+- [x] `cd frontend && npm run build`
 
 ## Smoke via Compose
 - [ ] `docker compose down -v` (optional reset) _(pending)_
