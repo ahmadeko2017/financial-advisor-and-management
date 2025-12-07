@@ -1,5 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
+
+from decimal import Decimal
 
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
@@ -77,20 +79,29 @@ class TransactionOut(TransactionBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class CategoryTotal(BaseModel):
+class DashboardPeriod(BaseModel):
+    start_date: date
+    end_date: date
+
+
+class DashboardTotals(BaseModel):
+    income: Decimal
+    expense: Decimal
+    balance: Decimal
+
+
+class DashboardTopCategory(BaseModel):
     category_id: Optional[str] = None
     name: Optional[str] = None
-    total: float
+    amount: Decimal
+    type: TransactionType
 
 
 class DashboardSummary(BaseModel):
-    period: str
-    start_date: datetime
-    end_date: datetime
-    income: float
-    expense: float
-    balance: float
-    top_categories: list[CategoryTotal]
+    period: DashboardPeriod
+    totals: DashboardTotals
+    top_categories: list[DashboardTopCategory]
+    currency: str = "IDR"
 
 
 class Pagination(BaseModel):

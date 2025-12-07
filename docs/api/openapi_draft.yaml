@@ -342,23 +342,36 @@ components:
     DashboardSummary:
       type: object
       properties:
-        period: { type: string }
-        start_date: { type: string, format: date-time }
-        end_date: { type: string, format: date-time }
-        income: { type: number }
-        expense: { type: number }
-        balance: { type: number }
+        period:
+          $ref: "#/components/schemas/DashboardPeriod"
+        totals:
+          $ref: "#/components/schemas/DashboardTotals"
         top_categories:
           type: array
           items:
-            $ref: "#/components/schemas/CategoryTotal"
+            $ref: "#/components/schemas/DashboardTopCategory"
+        currency: { type: string, example: IDR }
 
-    CategoryTotal:
+    DashboardPeriod:
+      type: object
+      properties:
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+
+    DashboardTotals:
+      type: object
+      properties:
+        income: { type: string, example: "12000000.00" }
+        expense: { type: string, example: "3500000.00" }
+        balance: { type: string, example: "8500000.00" }
+
+    DashboardTopCategory:
       type: object
       properties:
         category_id: { type: string, nullable: true }
         name: { type: string, nullable: true }
-        total: { type: number }
+        amount: { type: string, example: "1500000.00" }
+        type: { type: string, enum: [income, expense, transfer] }
 
     Pagination:
       type: object

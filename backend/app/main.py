@@ -148,8 +148,20 @@ app.include_router(transactions.router)
 app.include_router(dashboard.router)
 
 
-def format_error(status_code: int, message: str, code: str | None = None) -> JSONResponse:
-    payload = {"message": message, "code": code or f"HTTP_{status_code}"}
+ERROR_CODE_MAP = {
+    400: "VALIDATION_ERROR",
+    401: "UNAUTHORIZED",
+    403: "FORBIDDEN",
+    404: "NOT_FOUND",
+    422: "VALIDATION_ERROR",
+    500: "INTERNAL_ERROR",
+}
+
+
+def format_error(status_code: int, message: str, code: str | None = None, trace_id: str | None = None) -> JSONResponse:
+    payload = {"message": message, "code": code or ERROR_CODE_MAP.get(status_code, f"HTTP_{status_code}")}
+    if trace_id:
+        payload["trace_id"] = trace_id
     return JSONResponse(status_code=status_code, content=payload)
 
 
