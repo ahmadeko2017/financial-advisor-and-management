@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
+import time as _time
 from zoneinfo import ZoneInfo
 from typing import Optional
 
@@ -15,6 +16,8 @@ from app.rate_limit import check_rate_limit
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 JAKARTA_TZ = ZoneInfo("Asia/Jakarta")
 TWO_PLACES = Decimal("0.01")
+SUMMARY_CACHE_TTL_SECONDS = 300
+_summary_cache: dict[tuple[str, str, str, int], tuple[float, schemas.DashboardSummary]] = {}
 
 
 def _to_decimal(value: Decimal | None) -> Decimal:
@@ -48,8 +51,15 @@ def get_summary(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
-    check_rate_limit(user.id, "dashboard:summary")
     start, end, start_date_local, end_date_local = _resolve_period(start_date, end_date)
+
+    cache_key = (user.id, start_date_local.isoformat(), end_date_local.isoformat(), top_limit)
+    cached = _summary_cache.get(cache_key)
+    now_ts = _time.time()
+    if cached and cached[0] > now_ts:
+        return cached[1]
+
+    check_rate_limit(user.id, "dashboard:summary")
 
     base_q = (
         db.query(models.Transaction)
@@ -100,7 +110,7 @@ def get_summary(
     expense_dec = _to_decimal(expense)
     balance_dec = _to_decimal(income_dec - expense_dec)
 
-    return schemas.DashboardSummary(
+    summary = schemas.DashboardSummary(
         period=schemas.DashboardPeriod(start_date=start_date_local, end_date=end_date_local),
         totals=schemas.DashboardTotals(
             income=income_dec,
@@ -118,3 +128,5 @@ def get_summary(
         ],
         currency="IDR",
     )
+    _summary_cache[cache_key] = (now_ts + SUMMARY_CACHE_TTL_SECONDS, summary)
+    return summary
