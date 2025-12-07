@@ -151,10 +151,10 @@ paths:
       parameters:
         - in: query
           name: start_date
-          schema: { type: string, format: date }
+          schema: { type: string, format: date, description: "YYYY-MM-DD, Asia/Jakarta, inclusive start" }
         - in: query
           name: end_date
-          schema: { type: string, format: date }
+          schema: { type: string, format: date, description: "YYYY-MM-DD, Asia/Jakarta, inclusive end" }
         - in: query
           name: category_id
           schema: { type: string }
@@ -163,13 +163,13 @@ paths:
           schema: { type: string, enum: [income, expense, transfer] }
         - in: query
           name: q
-          schema: { type: string, description: search in description }
+          schema: { type: string, description: "search in description (trimmed, max 100 chars)" }
         - in: query
           name: page
           schema: { type: integer, minimum: 1, default: 1 }
         - in: query
           name: page_size
-          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         "200":
           description: OK
@@ -380,6 +380,9 @@ components:
         page_size: { type: integer }
         total_items: { type: integer }
         total_pages: { type: integer }
+        warnings:
+          type: array
+          items: { type: string }
 
     TransactionsPage:
       type: object

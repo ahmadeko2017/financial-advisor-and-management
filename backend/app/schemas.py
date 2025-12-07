@@ -109,6 +109,7 @@ class Pagination(BaseModel):
     page_size: int
     total_items: int
     total_pages: int
+    warnings: list[str] | None = None
 
 
 class TransactionsPage(BaseModel):

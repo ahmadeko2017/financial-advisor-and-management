@@ -65,5 +65,5 @@ def test_register_login_and_crud_accounts_transactions():
     res = client.get("/transactions", headers=headers)
     assert res.status_code == 200
     data = res.json()
-    assert len(data) == 1
-    assert data[0]["description"] == "Lunch"
+    assert data["pagination"]["total_items"] == 1
+    assert data["items"][0]["description"] == "Lunch"
