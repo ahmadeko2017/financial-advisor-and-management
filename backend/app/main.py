@@ -11,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, IntegrityError
 
 from app import models
 from app.database import Base, engine
@@ -76,14 +76,21 @@ def seed_demo_data():
         db = Session(bind=engine)
         user = db.query(User).filter(User.email == "demo@example.com").first()
         if not user:
-            user = User(
-                email="demo@example.com",
-                name="Demo User",
-                password_hash=get_password_hash("secret123"),
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+            try:
+                user = User(
+                    email="demo@example.com",
+                    name="Demo User",
+                    password_hash=get_password_hash("secret123"),
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+            except IntegrityError:
+                # Another process may have seeded concurrently; reuse existing
+                db.rollback()
+                user = db.query(User).filter(User.email == "demo@example.com").first()
+                if not user:
+                    raise
 
         account = (
             db.query(Account)
@@ -91,10 +98,20 @@ def seed_demo_data():
             .first()
         )
         if not account:
-            account = Account(user_id=user.id, name="Demo Cash", type="cash", currency="IDR")
-            db.add(account)
-            db.commit()
-            db.refresh(account)
+            try:
+                account = Account(user_id=user.id, name="Demo Cash", type="cash", currency="IDR")
+                db.add(account)
+                db.commit()
+                db.refresh(account)
+            except IntegrityError:
+                db.rollback()
+                account = (
+                    db.query(Account)
+                    .filter(Account.user_id == user.id, Account.name == "Demo Cash")
+                    .first()
+                )
+                if not account:
+                    raise
 
         makan_cat = (
             db.query(Category)
@@ -125,8 +142,11 @@ def seed_demo_data():
                 source="manual",
                 status=TransactionStatus.confirmed,
             )
-            db.add(tx)
-            db.commit()
+            try:
+                db.add(tx)
+                db.commit()
+            except IntegrityError:
+                db.rollback()
     finally:
         if db:
             db.close()
