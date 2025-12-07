@@ -9,6 +9,7 @@ from app import models, schemas
 from app.database import get_db
 from app.deps import get_current_user
 from app.rate_limit import check_rate_limit
+from app.ai.category_classifier import predict_category, load_model
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 JAKARTA_TZ = ZoneInfo("Asia/Jakarta")
@@ -109,6 +110,11 @@ def create_transaction(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
+    category_id = payload.category_id
+    predicted_category_id = None
+    predicted_confidence = None
+    status_value = payload.status
+
     account = (
         db.query(models.Account)
         .filter(models.Account.user_id == user.id, models.Account.id == payload.account_id)
@@ -117,29 +123,40 @@ def create_transaction(
     if not account:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account")
 
-    if payload.category_id:
+    if category_id:
         category = (
             db.query(models.Category)
             .filter(
                 (models.Category.user_id == None) | (models.Category.user_id == user.id),  # noqa: E711
-                models.Category.id == payload.category_id,
+                models.Category.id == category_id,
             )
             .first()
         )
         if not category:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category")
+    else:
+        # Auto-predict category if not provided
+        model = load_model()
+        result = predict_category(payload.description or "", model=model)
+        predicted_category_id = result.category_id
+        predicted_confidence = result.confidence
+        if predicted_category_id:
+            category_id = predicted_category_id
+            status_value = models.TransactionStatus.predicted
 
     tx = models.Transaction(
         user_id=user.id,
         account_id=payload.account_id,
-        category_id=payload.category_id,
+        category_id=category_id,
+        predicted_category_id=predicted_category_id,
+        predicted_confidence=predicted_confidence,
         type=payload.type,
         amount=payload.amount,
         currency=payload.currency,
         description=payload.description,
         occurred_at=payload.occurred_at,
         source=payload.source,
-        status=payload.status,
+        status=status_value,
     )
     db.add(tx)
     db.commit()

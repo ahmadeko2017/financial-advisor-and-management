@@ -82,6 +82,8 @@ class Transaction(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     account_id = Column(String, ForeignKey("accounts.id"), nullable=False, index=True)
     category_id = Column(String, ForeignKey("categories.id"), nullable=True, index=True)
+    predicted_category_id = Column(String, ForeignKey("categories.id"), nullable=True, index=True)
+    predicted_confidence = Column(Numeric(5, 4), nullable=True)
     type = Column(Enum(TransactionType), nullable=False)
     amount = Column(Numeric(14, 2), nullable=False)
     currency = Column(String, default="IDR")

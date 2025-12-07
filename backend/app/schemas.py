@@ -76,6 +76,8 @@ class TransactionCreate(TransactionBase):
 
 class TransactionOut(TransactionBase):
     id: str
+    predicted_category_id: Optional[str] = None
+    predicted_confidence: Optional[float] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -102,6 +104,24 @@ class DashboardSummary(BaseModel):
     totals: DashboardTotals
     top_categories: list[DashboardTopCategory]
     currency: str = "IDR"
+
+
+class CategoryScore(BaseModel):
+    label: str
+    score: float
+
+
+class PredictCategoryRequest(BaseModel):
+    description: str
+    amount: Optional[Decimal] = None
+    type: Optional[TransactionType] = None
+
+
+class PredictCategoryResponse(BaseModel):
+    category_id: Optional[str]
+    confidence: float
+    model_version: Optional[str] = None
+    top_k: list[CategoryScore] = []
 
 
 class Pagination(BaseModel):
