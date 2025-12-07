@@ -181,6 +181,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     post:
       summary: Create transaction
       security: [BearerAuth: []]
@@ -221,14 +223,14 @@ paths:
       security: [BearerAuth: []]
       parameters:
         - in: query
-          name: period
-          schema: { type: string, example: "2024-04" }
-        - in: query
           name: start_date
-          schema: { type: string, format: date-time }
+          schema: { type: string, format: date, description: "YYYY-MM-DD, default start of current month (Asia/Jakarta)" }
         - in: query
           name: end_date
-          schema: { type: string, format: date-time }
+          schema: { type: string, format: date, description: "YYYY-MM-DD, default today (Asia/Jakarta, inclusive 23:59:59)" }
+        - in: query
+          name: top_limit
+          schema: { type: integer, minimum: 1, maximum: 10, default: 5 }
       responses:
         "200":
           description: OK
@@ -238,6 +240,10 @@ paths:
                 $ref: "#/components/schemas/DashboardSummary"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
 components:
   securitySchemes:
@@ -249,6 +255,12 @@ components:
   responses:
     Unauthorized:
       description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    TooManyRequests:
+      description: Rate limit exceeded
       content:
         application/json:
           schema:

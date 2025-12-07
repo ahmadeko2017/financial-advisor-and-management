@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.deps import get_current_user
+from app.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 JAKARTA_TZ = ZoneInfo("Asia/Jakarta")
@@ -54,6 +55,7 @@ def list_transactions(
     page: int = Query(default=1, description="Page number (default 1)"),
     page_size: int = Query(default=20, description="Page size (default 20, max 100)"),
 ):
+    check_rate_limit(user.id, "transactions:list")
     warnings: list[str] = []
     if page < 1:
         page = 1

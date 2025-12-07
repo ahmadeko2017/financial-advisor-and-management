@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.deps import get_current_user
+from app.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 JAKARTA_TZ = ZoneInfo("Asia/Jakarta")
@@ -47,6 +48,7 @@ def get_summary(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
+    check_rate_limit(user.id, "dashboard:summary")
     start, end, start_date_local, end_date_local = _resolve_period(start_date, end_date)
 
     base_q = (
