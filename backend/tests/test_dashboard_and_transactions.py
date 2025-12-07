@@ -2,15 +2,19 @@ from datetime import datetime, date
 from decimal import Decimal
 from uuid import uuid4
 
-from httpx import Client, ASGITransport
+import pytest
+from httpx import AsyncClient, ASGITransport
 
 from app.main import app, seed_default_categories
 from app.database import Base, engine
 from app.routers import dashboard
 from app import models
 
-transport = ASGITransport(app=app)
-client = Client(transport=transport, base_url="http://testserver")
+@pytest.fixture(scope="module")
+async def client():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
 
 
 def setup_module():
@@ -24,30 +28,31 @@ def teardown_module():
     Base.metadata.drop_all(bind=engine)
 
 
-def _auth_headers(email: str | None = None) -> dict[str, str]:
+async def _auth_headers(client: AsyncClient, email: str | None = None) -> dict[str, str]:
     email = email or f"user_{uuid4().hex}@example.com"
     payload = {"email": email, "password": "secret123"}
-    client.post("/auth/register", json=payload)
-    res = client.post("/auth/login", json=payload)
+    await client.post("/auth/register", json=payload)
+    res = await client.post("/auth/login", json=payload)
     token = res.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
 
-def _make_account(headers: dict[str, str]) -> str:
-    res = client.post("/accounts", json={"name": "Cash", "type": "cash", "currency": "IDR"}, headers=headers)
+async def _make_account(client: AsyncClient, headers: dict[str, str]) -> str:
+    res = await client.post("/accounts", json={"name": "Cash", "type": "cash", "currency": "IDR"}, headers=headers)
     return res.json()["id"]
 
 
-def test_dashboard_summary_totals_and_top_category():
-    headers = _auth_headers()
-    account_id = _make_account(headers)
+@pytest.mark.anyio
+async def test_dashboard_summary_totals_and_top_category(client: AsyncClient):
+    headers = await _auth_headers(client)
+    account_id = await _make_account(client, headers)
 
     # Create expense category and transactions
-    res = client.post("/categories", json={"name": "Food", "type": "expense"}, headers=headers)
+    res = await client.post("/categories", json={"name": "Food", "type": "expense"}, headers=headers)
     category_id = res.json()["id"]
     now_iso = datetime.utcnow().isoformat()
 
-    client.post(
+    await client.post(
         "/transactions",
         json={
             "account_id": account_id,
@@ -63,7 +68,7 @@ def test_dashboard_summary_totals_and_top_category():
         headers=headers,
     )
 
-    client.post(
+    await client.post(
         "/transactions",
         json={
             "account_id": account_id,
@@ -80,7 +85,7 @@ def test_dashboard_summary_totals_and_top_category():
     )
 
     today = date.today().isoformat()
-    res = client.get(
+    res = await client.get(
         "/dashboard/summary",
         params={"start_date": today, "end_date": today},
         headers=headers,
@@ -99,15 +104,16 @@ def test_dashboard_summary_totals_and_top_category():
     assert to_dec(top["amount"]) == Decimal("20000.00")
 
 
-def test_transactions_pagination_warnings_and_filter():
-    headers = _auth_headers(email="pager@example.com")
-    account_id = _make_account(headers)
+@pytest.mark.anyio
+async def test_transactions_pagination_warnings_and_filter(client: AsyncClient):
+    headers = await _auth_headers(client, email="pager@example.com")
+    account_id = await _make_account(client, headers)
 
     # Create category and one transaction
-    res = client.post("/categories", json={"name": "Coffee", "type": "expense"}, headers=headers)
+    res = await client.post("/categories", json={"name": "Coffee", "type": "expense"}, headers=headers)
     category_id = res.json()["id"]
     now_iso = datetime.utcnow().isoformat()
-    client.post(
+    await client.post(
         "/transactions",
         json={
             "account_id": account_id,
@@ -123,7 +129,7 @@ def test_transactions_pagination_warnings_and_filter():
         headers=headers,
     )
 
-    res = client.get(
+    res = await client.get(
         "/transactions",
         params={"page": 0, "page_size": 150, "q": "Coffee"},
         headers=headers,
@@ -140,9 +146,10 @@ def test_transactions_pagination_warnings_and_filter():
     assert data["items"][0]["description"] == "Coffee Morning"
 
 
-def test_dashboard_invalid_period_returns_validation_error():
-    headers = _auth_headers(email="period@example.com")
-    res = client.get(
+@pytest.mark.anyio
+async def test_dashboard_invalid_period_returns_validation_error(client: AsyncClient):
+    headers = await _auth_headers(client, email="period@example.com")
+    res = await client.get(
         "/dashboard/summary",
         params={"start_date": "2025-02-10", "end_date": "2025-02-01"},
         headers=headers,

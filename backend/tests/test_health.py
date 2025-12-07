@@ -1,11 +1,13 @@
-from httpx import Client, ASGITransport
+import pytest
+from httpx import AsyncClient, ASGITransport
 
 from app.main import app
 
-transport = ASGITransport(app=app)
-client = Client(transport=transport, base_url="http://testserver")
 
-def test_health():
-    response = client.get("/health")
+@pytest.mark.anyio
+async def test_health():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
