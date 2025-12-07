@@ -70,7 +70,7 @@ async def test_transaction_auto_predict(monkeypatch):
         res = await client.post("/transactions", json=payload, headers=headers)
         assert res.status_code == 201
         data = res.json()
-        assert data["predicted_category_id"] == "dummy-cat"
+        assert data["predicted_category_id"] == category_id
         assert data["predicted_confidence"] == pytest.approx(0.9)
-        assert data["category_id"] == "dummy-cat"
+        assert data["category_id"] == category_id
         assert data["status"] == models.TransactionStatus.predicted
