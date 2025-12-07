@@ -60,9 +60,9 @@ Durasi: 2 minggu. Fokus pada summary dashboard, hardening transaksi (pagination/
 - Kombinasi filter tanpa hasil: kembalikan 200 dengan list kosong, meta pagination tetap valid.
 
 ### Pagination, Sorting, dan Fallback
-- Default `page=1`, `page_size=20`, `max_page_size=100`.
+- Default `page=1`, `page_size=20`, `max_page_size=100`; `total_pages=0` jika tidak ada data.
 - Default sort transaksi: `occurred_at` desc; sorting lain nanti disusulkan via white-list (desc/asc).
-- Query invalid (page < 1, page_size < 1 atau > max): fallback ke default dan sertakan warning ringan di response meta bila diperlukan.
+- Query invalid (page < 1, page_size < 1 atau > max): auto-fallback (reset/cap) dan kembalikan warning ringan di `pagination.warnings` untuk transparansi ke FE.
 
 ### Hardening/Keamanan
 - Semua endpoint (kecuali `/health`) wajib Authorization Bearer; scoping berdasarkan `user_id` di token.
