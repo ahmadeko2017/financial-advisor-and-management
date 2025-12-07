@@ -1,0 +1,41 @@
+description,amount,type,category_id
+"Gaji bulan Januari",12000000,income,income-salary
+"Bonus akhir tahun",5000000,income,income-bonus
+"Fee freelance desain",2500000,income,income-freelance
+"Transfer orang tua",1500000,income,income-transfer
+"Makan siang warteg",30000,expense,food
+"Makan malam bakso",40000,expense,food
+"Kopi pagi janji jiwa",25000,expense,food
+"Ngopi starbucks",55000,expense,food
+"Nasi padang makan siang",45000,expense,food
+"Martabak malam",70000,expense,food
+"Camilan indomaret",20000,expense,food
+"Ojek online ke kantor",25000,expense,transport
+"GrabCar ke bandara",120000,expense,transport
+"Isi bensin motor",60000,expense,transport
+"Parkir mall",10000,expense,transport
+"Parkir kantor",5000,expense,transport
+"Bayar listrik PLN",500000,expense,utilities
+"Bayar air PAM",150000,expense,utilities
+"Pulsa telkomsel",100000,expense,utilities
+"Paket data XL",120000,expense,utilities
+"Tagihan internet IndiHome",350000,expense,utilities
+"Belanja pakaian Uniqlo",350000,expense,shopping
+"Belanja sepatu",500000,expense,shopping
+"Belanja skincare",250000,expense,shopping
+"Belanja supermarket",200000,expense,shopping
+"Langganan Netflix",60000,expense,entertainment
+"Langganan Spotify",50000,expense,entertainment
+"Nonton bioskop",80000,expense,entertainment
+"Tiket konser",750000,expense,entertainment
+"Sumbangan masjid",100000,expense,charity
+"Zakat bulanan",300000,expense,charity
+"Bayar BPJS",150000,expense,health
+"Beli obat apotek",80000,expense,health
+"Check up dokter",350000,expense,health
+"Uang sekolah anak",1000000,expense,education
+"Course online",200000,expense,education
+"Buku pelajaran",150000,expense,education
+"Top up e-wallet",200000,transfer,transfer
+"Transfer tabungan",500000,transfer,transfer
+"Transfer dana darurat",300000,transfer,transfer
