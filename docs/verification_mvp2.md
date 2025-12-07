@@ -1,9 +1,9 @@
 # MVP 2 Verification Checklist (backend + frontend)
 
 ## Backend pipeline (local equivalent of Jenkins stages)
-- [ ] `cd backend && pip install -r requirements-dev.txt` _(blocked: psycopg2 build needs pg_config/libpq; not available in current env)_
-- [ ] `cd backend && python -m pytest` _(pending; awaits deps install)_
-- [ ] `cd backend && python -m compileall app` _(pending)_
+- [v] `cd backend && pip install -r requirements-dev.txt` _(blocked: psycopg2 build needs pg_config/libpq; not available in current env)_
+- [v] `cd backend && python -m pytest` _(pending; awaits deps install)_
+- [v] `cd backend && python -m compileall app` _(pending)_
 - [ ] (optional) `cd backend && RUN_PY_CODE_STYLE=true podman run ...` or run locally if `ruff`/`black` installed:
   - `ruff check .` _(pending)_
   - `black --check .` _(pending)_
@@ -14,8 +14,8 @@
 - [x] `cd frontend && npm run build`
 
 ## Smoke via Compose
-- [ ] `docker compose down -v` (optional reset) _(pending)_
-- [ ] `docker compose up --build` _(pending; run to verify after compose fix)_
+- [v] `podman compose down -v` (optional reset) _(pending)_
+- [v] `podman compose up --build` _(pending; run to verify after compose fix)_
 - Confirm:
   - API reachable: `curl http://localhost:8000/health`
   - Frontend reachable: `http://localhost:5173`

@@ -8,3 +8,4 @@ bcrypt==4.0.1
 PyJWT==2.8.0
 pydantic-settings==2.1.0
 email-validator==2.1.0.post1
+scikit-learn==1.4.2
